@@ -1,10 +1,12 @@
-# cmgarage
-# Welcome to cmgarage app 👋
-This is a small app to check the overall status of the below services on Thales CipherTrust Manager
-- Password Validation
-- Disk Encryption
-- Backup Status
-- Cluster Status
+# cmconnect
+# Welcome to cmconnect app 👋
+This is a small app to showcase how Thales CM encryption and decryption features can be used in your applications.
+Below operations have been demonstrated in this app.
+- Authenticate with CM
+- Call Encryption API
+- Store the Encrypted data in PostgreSQL
+- Get data back from PostgreSQL
+- Decrypt the ciphertext and serve it back to the user in plain.
 
 # Installation ✔
 Make sure you have go installed on your workstation and you can download the code and use it directly on any IDE
@@ -20,17 +22,14 @@ cm_secret:
   cm_user: "Your CipherTrust Manager Username"
   cm_password: "Your CipherTrust Manager User Password"
   encryption_key: "Your CM Encryption Key"
-akeyless_secret:
-  username: "Your Akeyless console email (https://console.akeyless.io/)"
-  password: "Your Akeyless console password"
 ```
 To run the program you need to execute the run command in the below format
 ```bash
-go run cmd/cmgarage/main.go -configfile config.yaml
+go run cmd/cmconnect/main.go -configfile config.yaml
 ```
 Build the program into an executable file for your specific platform, Example below for Windows
 ```bash
-go build -o cmgarage.exe cmd/cmgarage/main.go -configfile config.yaml
+go build -o cmconnect.exe cmd/cmconnect/main.go -configfile config.yaml
 ```
 
 # Contributing 🤝
