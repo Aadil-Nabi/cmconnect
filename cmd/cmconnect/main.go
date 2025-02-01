@@ -4,7 +4,14 @@ import (
 	"fmt"
 
 	"github.com/Aadil-Nabi/cmconnect/api/encryption"
+	"github.com/Aadil-Nabi/cmconnect/configs"
+	"github.com/Aadil-Nabi/cmconnect/controllers"
+	"github.com/gin-gonic/gin"
 )
+
+func init() {
+	configs.MustLoadEnvs()
+}
 
 func main() {
 	fmt.Println("***********************************************************************************************")
@@ -16,5 +23,15 @@ func main() {
 
 	// CM APIS
 	encryption.Encrypting()
+
+	// Routers for
+
+	// Create a gin router
+	router := gin.Default()
+
+	router.POST("/create", controllers.CreatePostHandler)
+
+	// Run the Server
+	router.Run()
 
 }

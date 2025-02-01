@@ -7,7 +7,7 @@ import (
 	"io"
 	"log"
 
-	"github.com/Aadil-Nabi/cmconnect/internal/config"
+	"github.com/Aadil-Nabi/cmconnect/configs"
 	"github.com/Aadil-Nabi/cmconnect/internal/pkg/cmhttpclient"
 )
 
@@ -38,7 +38,7 @@ func GetAuthDetails() *JWTData {
 func getJwt() []byte {
 
 	// Fetch the username and password from config.yaml file provide in the command line
-	configs := config.MustLoad()
+	configs := configs.MustLoad()
 
 	// Get Secrets from the AKeyless account, here we fect the CM Password from the the AKeyless vault.
 	// We can get the password from the config.yaml file, but we are fecthing the CM Password from the AKeyless Vault

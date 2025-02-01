@@ -10,7 +10,7 @@ import (
 	"net/http"
 
 	"github.com/Aadil-Nabi/cmconnect/auth/jwtauth"
-	"github.com/Aadil-Nabi/cmconnect/internal/config"
+	"github.com/Aadil-Nabi/cmconnect/configs"
 	"github.com/Aadil-Nabi/cmconnect/internal/pkg/cmhttpclient"
 )
 
@@ -21,7 +21,7 @@ func Encrypting() {
 	jwt_details := jwtauth.GetAuthDetails()
 	bearer := jwt_details.Token_type + " " + jwt_details.Jwt
 
-	configs := config.MustLoad()
+	configs := configs.MustLoad()
 	url := configs.Base_Url + configs.Version + "/crypto/encrypt"
 
 	// Encode the data to be encrypted in base64 string as CM only accepts a valid base64 string
