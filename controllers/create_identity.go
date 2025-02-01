@@ -1,22 +1,54 @@
-package encryption
+package controllers
 
 import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 
 	"github.com/Aadil-Nabi/cmconnect/auth/jwtauth"
 	"github.com/Aadil-Nabi/cmconnect/configs"
-
 	"github.com/Aadil-Nabi/cmconnect/internal/pkg/cmhttpclient"
+	"github.com/Aadil-Nabi/cmconnect/models"
+	"github.com/gin-gonic/gin"
+	"gopkg.in/yaml.v3"
 )
 
-// Encrypting method to encrypt the data using the provided key in the config.yaml file
-func Encrypting() {
+// Create a struct accessible from outside of this package
+type Identity struct {
+	IdentityNumber string
+	Department     string
+}
+
+var IdentityPayload *Identity
+
+func CreatePostHandler(c *gin.Context) {
+
+	c.Bind(&IdentityPayload)
+
+	cipherText := encrypting()
+	identityNumber := cipherText["ciphertext"]
+
+	identity := models.Identity{
+		IdentityNumber: identityNumber,
+		Department:     IdentityPayload.Department,
+	}
+
+	DB := configs.ConnectDB()
+	DB.Create(&identity)
+
+	c.JSON(http.StatusOK, gin.H{
+		"result": "post created",
+	})
+
+}
+
+// encrypting method to encrypt the data using the provided key in the config.yaml file
+func encrypting() map[string]string {
+
+	identityNumber := IdentityPayload.IdentityNumber
 
 	// Get Jwt details like token type and actual token to create a bearer string
 	jwt_details := jwtauth.GetAuthDetails()
@@ -26,7 +58,7 @@ func Encrypting() {
 	url := configs.Base_Url + configs.Version + "/crypto/encrypt"
 
 	// Encode the data to be encrypted in base64 string as CM only accepts a valid base64 string
-	plaintext := "Asdf@1234"
+	plaintext := identityNumber
 	plaintext = base64.StdEncoding.EncodeToString([]byte(plaintext))
 	payload := map[string]string{
 		"id":        configs.Encryption_key,
@@ -68,6 +100,10 @@ func Encrypting() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(string(data))
+	var output map[string]string
+
+	yaml.Unmarshal(data, &output)
+
+	return output
 
 }
