@@ -14,9 +14,10 @@ import (
 	"github.com/Aadil-Nabi/cmconnect/internal/pkg/cmhttpclient"
 )
 
-// Encrypting method to encrypt the data using the provided key
+// Encrypting method to encrypt the data using the provided key in the config.yaml file
 func Encrypting() {
 
+	// Get Jwt details like token type and actual token to create a bearer string
 	jwt_details := jwtauth.GetAuthDetails()
 	bearer := jwt_details.Token_type + " " + jwt_details.Jwt
 
