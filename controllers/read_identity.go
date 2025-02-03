@@ -1,27 +1,50 @@
 package controllers
 
 import (
+	"crypto/hmac"
+	"net/http"
+
+	"github.com/Aadil-Nabi/cmconnect/configs"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func ReadPostHandler(c *gin.Context) {
 
-	// var identityDetails Identity
+	// Load DB and other configurations required.
+	DB := configs.ConnectDB()
+	// cnfs := configs.MustLoad()
 
-	// c.Bind(&identityDetails)
+	var identity IdentityDetails
 
-	// identity := models.Identity{
-	// 	IdentityNumber: identityDetails.IdentityNumber,
-	// 	Department:     identityDetails.Department,
-	// }
+	result := DB.Where("cipher=?", "lrSNa13I").First(&identity)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			// DB.Create(&identity)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "identitynumber not found",
+			})
+			return
+		}
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"result": identity,
+		})
 
-	// DB := configs.ConnectDB()
-	// DB.First(&identityDetails, "id=?", c.Param("id"))
+	}
+
+	// verifyMAC(identityDetail.IdentityNumber, cnfs.Encryption_key, identityDetail.Mac)
 
 	// c.JSON(http.StatusOK, gin.H{
 	// 	"result": "decryptyed data",
 	// })
 
+}
+
+// verifyMAC checks if the provided MAC is valid
+func verifyMAC(message, secretKey, receivedMAC string) bool {
+	expectedMAC := generateMac(message, secretKey)
+	return hmac.Equal([]byte(receivedMAC), []byte(expectedMAC))
 }
 
 func decrypting() {
