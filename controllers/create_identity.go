@@ -2,7 +2,10 @@ package controllers
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"log"
@@ -14,6 +17,7 @@ import (
 	"github.com/Aadil-Nabi/cmconnect/models"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
+	"gorm.io/gorm"
 )
 
 // Create a struct accessible from outside of this package
@@ -26,27 +30,51 @@ var IdentityPayload *Identity
 
 func CreatePostHandler(c *gin.Context) {
 
+	// bind the requested input to the required struct, in short terms store the requested value in the variable.
 	c.Bind(&IdentityPayload)
 
+	// Load configurations from the yaml file.
+	cnfg := configs.MustLoad()
+
+	// generate the mac value for the identity number.
+	mac := generateMac(IdentityPayload.IdentityNumber, cnfg.Encryption_key)
+
+	// encrypt the identity number
 	cipherText := encrypting()
 	identityNumber := cipherText["ciphertext"]
 
 	identity := models.Identity{
 		IdentityNumber: identityNumber,
+		Mac:            mac,
 		Department:     IdentityPayload.Department,
 	}
 
+	// get DB connection and create an entry inside the table.
 	DB := configs.ConnectDB()
-	DB.Create(&identity)
 
+	result := DB.Where("mac=?", mac).First(&identity)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			DB.Create(&identity)
+		}
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "identitynumber already exist in the database",
+		})
+		// fmt.Println("entry already exisist ", identity)
+		return
+	}
+	// Send JSON response to the front end.
 	c.JSON(http.StatusOK, gin.H{
-		"result": "post created",
+		"ciphertext": cipherText,
+		"Mac":        mac,
 	})
 
 }
 
 // encrypting method to encrypt the data using the provided key in the config.yaml file
 func encrypting() map[string]string {
+	cnfg := configs.MustLoad()
 
 	identityNumber := IdentityPayload.IdentityNumber
 
@@ -54,14 +82,13 @@ func encrypting() map[string]string {
 	jwt_details := jwtauth.GetAuthDetails()
 	bearer := jwt_details.Token_type + " " + jwt_details.Jwt
 
-	configs := configs.MustLoad()
-	url := configs.Base_Url + configs.Version + "/crypto/encrypt"
+	url := cnfg.Base_Url + cnfg.Version + "/crypto/encrypt"
 
 	// Encode the data to be encrypted in base64 string as CM only accepts a valid base64 string
 	plaintext := identityNumber
 	plaintext = base64.StdEncoding.EncodeToString([]byte(plaintext))
 	payload := map[string]string{
-		"id":        configs.Encryption_key,
+		"id":        cnfg.Encryption_key,
 		"plaintext": plaintext,
 	}
 
@@ -105,5 +132,15 @@ func encrypting() map[string]string {
 	yaml.Unmarshal(data, &output)
 
 	return output
+
+}
+
+// generateMac creates a MAC using HMAC-SHA256 of the passed message using the key.
+func generateMac(message, key string) string {
+	secretKey := []byte(key)
+	hash := hmac.New(sha256.New, secretKey)
+	hash.Write([]byte(message))
+	mac := hash.Sum(nil)
+	return hex.EncodeToString(mac)
 
 }

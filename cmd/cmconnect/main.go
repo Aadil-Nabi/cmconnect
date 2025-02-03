@@ -30,6 +30,7 @@ func main() {
 	router := gin.Default()
 
 	router.POST("/create", controllers.CreatePostHandler)
+	router.GET("/read", controllers.ReadPostHandler)
 
 	// Run the Server
 	router.Run()
