@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -23,9 +22,9 @@ import (
 
 // Create a struct accessible from outside of this package
 type IdentityDetails struct {
-	IdentityNumber string
-	SecurityPin    string
-	Department     string
+	EmployeeName string
+	SecurityPin  string
+	Department   string
 }
 
 var identityPayload IdentityDetails
@@ -35,42 +34,34 @@ func CreatePostHandler(c *gin.Context) {
 	// bind the requested input to the required struct, in short store the requested value in the variable.
 	c.Bind(&identityPayload)
 
-	fmt.Println("identityPayload is:", identityPayload)
-
 	// Load configurations from the yaml file.
 	cnfg := configs.MustLoad()
 
 	// generate the mac value for the identity number.
 	mac := generateMac(identityPayload.SecurityPin, cnfg.Encryption_key)
 
-	fmt.Println("SecurityPinNumber", identityPayload.SecurityPin)
-	fmt.Println("IdentityNUmber", identityPayload.IdentityNumber)
 	// encrypt the identity number and insert in two columns (identity_number and cipher)
 	cipherText := encrypting()
-	fmt.Println("ciphertext is :: ", cipherText)
 	cipher := cipherText["ciphertext"]
 
-	fmt.Println("cipher is ::", cipher)
-
 	identity := models.Identity{
-		IdentityNumber: cipher,
-		SecurityPin:    mac,
-		Department:     identityPayload.Department,
+		EmployeeName: cipher,
+		SecurityPin:  mac,
+		Department:   identityPayload.Department,
 	}
 
 	// get DB connection and create an entry inside the table.
 	DB := configs.ConnectDB()
 
-	result := DB.Where("security_pin_number=?", mac).First(&identity)
+	result := DB.Where("security_pin=?", mac).First(&identity)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			DB.Create(&identity)
 		}
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "identity already exist in the database, try changin Security Pin Number",
+			"error": "Security Pin already exist, it should be unique",
 		})
-		// fmt.Println("entry already exisist ", identity)
 		return
 	}
 	// Send JSON response to the front end.
@@ -84,8 +75,7 @@ func CreatePostHandler(c *gin.Context) {
 func encrypting() map[string]string {
 	cnfg := configs.MustLoad()
 
-	identityNumber := identityPayload.IdentityNumber
-	fmt.Println("identityNumber is :", identityNumber)
+	identityNumber := identityPayload.EmployeeName
 
 	// Get Jwt details like token type and actual token to create a bearer string
 	jwt_details := jwtauth.GetAuthDetails()
@@ -95,7 +85,6 @@ func encrypting() map[string]string {
 
 	// Encode the data to be encrypted in base64 string as CM only accepts a valid base64 string
 	plaintext := identityNumber
-	fmt.Println("plaintext is :", plaintext)
 	plaintext = base64.StdEncoding.EncodeToString([]byte(plaintext))
 	payload := map[string]string{
 		"id":        cnfg.Encryption_key,
@@ -141,8 +130,6 @@ func encrypting() map[string]string {
 
 	yaml.Unmarshal(data, &output)
 
-	fmt.Println("data is :", string(data))
-	fmt.Println("output is: ", output)
 	return output
 
 }
@@ -154,5 +141,4 @@ func generateMac(message, key string) string {
 	hash.Write([]byte(message))
 	mac := hash.Sum(nil)
 	return hex.EncodeToString(mac)
-
 }

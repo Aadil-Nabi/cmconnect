@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/Aadil-Nabi/cmconnect/api/encryption"
 	"github.com/Aadil-Nabi/cmconnect/configs"
 	"github.com/Aadil-Nabi/cmconnect/controllers"
 	"github.com/gin-gonic/gin"
@@ -15,14 +14,11 @@ func init() {
 
 func main() {
 	fmt.Println("***********************************************************************************************")
-	fmt.Println("**************************_________Welcome to the CM API_________******************************")
+	fmt.Println("**************************_________Welcome to the CMConnect App_________******************************")
 	fmt.Println("***********************************************************************************************")
 	fmt.Println("***********************************************************************************************")
 
 	fmt.Println()
-
-	// CM APIS
-	encryption.Encrypting()
 
 	// Routers for
 
