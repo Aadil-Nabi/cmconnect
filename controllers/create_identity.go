@@ -2,11 +2,9 @@ package controllers
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -16,12 +14,14 @@ import (
 	"github.com/Aadil-Nabi/cmconnect/internal/pkg/cmhttpclient"
 	"github.com/Aadil-Nabi/cmconnect/models"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 )
 
 // Create a struct accessible from outside of this package
 type IdentityDetails struct {
+	Email        string
 	EmployeeName string
 	SecurityPin  string
 	Department   string
@@ -34,33 +34,39 @@ func CreatePostHandler(c *gin.Context) {
 	// bind the requested input to the required struct, in short store the requested value in the variable.
 	c.Bind(&identityPayload)
 
-	// Load configurations from the yaml file.
-	cnfg := configs.MustLoad()
+	fmt.Println("identityPayload is : ", identityPayload)
 
-	// generate the mac value for the identity number.
-	mac := generateMac(identityPayload.SecurityPin, cnfg.Encryption_key)
+	// Hash the Security Pin
+	hash, err := bcrypt.GenerateFromPassword([]byte(identityPayload.SecurityPin), 10)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "failed to Hash password",
+		})
+		return
+	}
 
-	// encrypt the identity number and insert in two columns (identity_number and cipher)
+	// Encrypt the identity number and insert in two columns (identity_number and cipher)
 	cipherText := encrypting()
 	cipher := cipherText["ciphertext"]
 
 	identity := models.Identity{
+		Email:        identityPayload.Email,
 		EmployeeName: cipher,
-		SecurityPin:  mac,
+		SecurityPin:  string(hash),
 		Department:   identityPayload.Department,
 	}
 
 	// get DB connection and create an entry inside the table.
 	DB := configs.ConnectDB()
 
-	result := DB.Where("security_pin=?", mac).First(&identity)
+	result := DB.Where("email=?", identityPayload.Email).First(&identity)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			DB.Create(&identity)
 		}
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Security Pin already exist, it should be unique",
+			"error": "Security Pin or email already exists, these fields should be unique",
 		})
 		return
 	}
@@ -132,13 +138,4 @@ func encrypting() map[string]string {
 
 	return output
 
-}
-
-// generateMac creates a MAC using HMAC-SHA256 of the passed message using the key.
-func generateMac(message, key string) string {
-	secretKey := []byte(key)
-	hash := hmac.New(sha256.New, secretKey)
-	hash.Write([]byte(message))
-	mac := hash.Sum(nil)
-	return hex.EncodeToString(mac)
 }

@@ -27,6 +27,7 @@ func main() {
 
 	router.POST("/create", controllers.CreatePostHandler)
 	router.GET("/read", controllers.ReadPostHandler)
+	router.GET("/view", controllers.ViewIdentity)
 
 	// Run the Server
 	router.Run()

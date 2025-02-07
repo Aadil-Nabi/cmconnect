@@ -1,57 +1,57 @@
 package controllers
 
 import (
-	"crypto/hmac"
-	"fmt"
 	"net/http"
 
 	"github.com/Aadil-Nabi/cmconnect/configs"
 	"github.com/Aadil-Nabi/cmconnect/models"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // securityPin struct to store the value from the request.
-type securityPin struct {
-	SecurityPin string
+type EmployeeDetails struct {
+	Email       string `json:"email" binding:"required"`
+	SecurityPin string `json:"securitypin" binding:"required"`
 }
+
+var employeeBody EmployeeDetails
 
 func ReadPostHandler(c *gin.Context) {
 
-	var secretPin securityPin
-	c.Bind(&secretPin)
+	// ShouldBindJSON to bind the JSON data from the request body to the EmployeeDetails struct:
+	c.ShouldBindJSON(&employeeBody)
 
-	// Load DB and other configurations required.
-	DB := configs.ConnectDB()
-	// cnfs := configs.MustLoad()
-
+	// Declare a variable of Identity model stored in DB
 	var identity models.Identity
-	// var identityResult identityResult
 
-	result := DB.Where("employee_name=?", "Bz3uZQg=").First(&identity)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			// DB.Create(&identity)
+	// Get DB object
+	DB := configs.ConnectDB()
+
+	// Below DB query is to get the security pin and store in EmployeeDetails struct object.
+	DB.Where("email=?", employeeBody.Email).First(&identity)
+
+	// Lookup the requested user in the DB and store in a variable
+	// Compare the Security Pin hash with the one store in DB
+	// If Secuity Pin matches, we fetch the user details otherwise return
+	err := bcrypt.CompareHashAndPassword([]byte(identity.SecurityPin), []byte(employeeBody.SecurityPin))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "failed to authenticate security Pin, invalid security pin was provided",
+		})
+		return
+	} else {
+		res := DB.Where("email=?", employeeBody.Email).First(&identity)
+		if res.Error != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "identitynumber not found",
+				"error": "identity not found",
 			})
 			return
+		} else {
+			c.JSON(http.StatusOK, gin.H{
+				"result": identity,
+			})
 		}
-	} else {
-		c.JSON(http.StatusOK, gin.H{
-			"result": identity,
-		})
-
 	}
 
-	fmt.Println(" identity object is : >", identity)
-
-	// verifyMAC(identityDetail.IdentityNumber, cnfs.Encryption_key, identityDetail.Mac)
-
-}
-
-// verifyMAC checks if the provided MAC is valid
-func verifyMAC(message, secretKey, receivedMAC string) bool {
-	expectedMAC := generateMac(message, secretKey)
-	return hmac.Equal([]byte(receivedMAC), []byte(expectedMAC))
 }
