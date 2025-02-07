@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -34,8 +33,6 @@ func CreatePostHandler(c *gin.Context) {
 	// bind the requested input to the required struct, in short store the requested value in the variable.
 	c.Bind(&identityPayload)
 
-	fmt.Println("identityPayload is : ", identityPayload)
-
 	// Hash the Security Pin
 	hash, err := bcrypt.GenerateFromPassword([]byte(identityPayload.SecurityPin), 10)
 	if err != nil {
@@ -60,13 +57,14 @@ func CreatePostHandler(c *gin.Context) {
 	DB := configs.ConnectDB()
 
 	result := DB.Where("email=?", identityPayload.Email).First(&identity)
+
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			DB.Create(&identity)
 		}
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Security Pin or email already exists, these fields should be unique",
+			"error": "Email already exists, try with a new email id",
 		})
 		return
 	}
