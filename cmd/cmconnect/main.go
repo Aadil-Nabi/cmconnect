@@ -20,14 +20,11 @@ func main() {
 
 	fmt.Println()
 
-	// Routers for
-
 	// Create a gin router
 	router := gin.Default()
 
 	router.POST("/create", controllers.CreatePostHandler)
 	router.GET("/read", controllers.ReadPostHandler)
-	router.GET("/view", controllers.ViewIdentity)
 
 	// Run the Server
 	router.Run()
